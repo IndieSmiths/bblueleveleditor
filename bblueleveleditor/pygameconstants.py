@@ -13,37 +13,35 @@ from io import StringIO
 ## to prevent the default message to be printed on the
 ## screen;
 ##
-## don't worry, we proudly credit the usage of pygame by
-## displaying the pygame logo right upon launching the game,
-## in the logo screen
+## don't worry, we proudly credit the usage of pygame in
+## prominent spots in our apps/games/tools
 
 with StringIO() as temp_stream:
     with redirect_stdout(temp_stream):
-        from pygame import init as init_pygame
-
-from pygame.mixer import pre_init as pre_init_mixer
+        from pygame.mixer import pre_init as pre_init_mixer
 
 from pygame.locals import SCALED
 
-from pygame.display import set_mode, set_caption
+from pygame.display import set_mode, set_caption, init as init_display
+
+from pygame.font import init as init_font
 
 from pygame.time import Clock
 
 
+
 pre_init_mixer(frequency=44100)
 
-init_pygame()
+init_display()
+init_font()
 
 set_caption("Scaled Level Editor", "SLE")
 
 SCREEN = set_mode((320, 180), SCALED, 32)
-SCREEN.fill("white")
-
-WHITE_BG = SCREEN.copy()
-WHITE_BG.fill("white")
 
 SCREEN_RECT = SCREEN.get_rect()
 blit_on_screen = SCREEN.blit
+fill_screen = SCREEN.fill
 
 SCREEN_WIDTH, SCREEN_HEIGHT = SCREEN_RECT.size
 
