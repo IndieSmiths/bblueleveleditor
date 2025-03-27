@@ -550,16 +550,22 @@ class LevelChunk:
             getattr(self, obj.layer_name).add(obj)
 
             center_map[obj] = tuple(
-                offset - center_dim
-                for offset, center_dim in zip(topleft, obj.rect.center)
+                chunk_pos - obj_center_pos
+                for chunk_pos, obj_center_pos in zip(topleft, obj.rect.center)
             )
 
     def position_objs(self):
 
         get_center = self.get_center
 
+        topleft = self.rect.topleft
+
         for obj in self.objs:
-            obj.rect.center = get_center(obj)
+
+            obj.rect.center = tuple(
+                chunk_pos - obj_center_offset
+                for chunk_pos, obj_center_offset in zip(topleft, get_center(obj))
+            )
 
 
 def instantiate_and_group_objects():
@@ -681,7 +687,7 @@ def init_chunks():
     CHUNKS_IN.update(
         chunk
         for chunk in CHUNKS
-        if vicinity_colliderect(chunk)
+        if vicinity_colliderect(chunk.rect)
     )
 
     for chunk in CHUNKS_IN:
@@ -852,7 +858,7 @@ def update_chunks_and_layers(dx, dy):
     CHUNKS_IN_TEMP.update(
         chunk
         for chunk in CHUNKS
-        if vicinity_colliderect(chunk)
+        if vicinity_colliderect(chunk.rect)
     )
 
     ### if it is different from previous chunks in vicinity...
@@ -870,6 +876,7 @@ def update_chunks_and_layers(dx, dy):
                     getattr(chunk, layer_name)
                 )
 
+
         ### for the chunks entering vicinity, add their objects to the layers
 
         for chunk in (CHUNKS_IN_TEMP - CHUNKS_IN):
@@ -879,6 +886,7 @@ def update_chunks_and_layers(dx, dy):
                 get_layer_from_name(layer_name).update(
                     getattr(chunk, layer_name)
                 )
+
 
         ### update the set of chunks in vicinity
 
