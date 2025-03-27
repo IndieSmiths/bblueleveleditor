@@ -4,7 +4,7 @@
 
 from types import SimpleNamespace
 
-from itertools import chain, product
+from itertools import chain, repeat, product
 
 from ast import literal_eval
 
@@ -66,10 +66,13 @@ from .config import (
 
 from .pygameconstants import (
     FPS, SCREEN, SCREEN_RECT,
-    maintain_fps, fill_screen, blit_on_screen, screen_colliderect,
+    maintain_fps,
+    fill_screen,
+    blit_on_screen,
+    screen_colliderect,
 )
 
-from .grid.oop import ScrollableGrid
+from .grid import ScrollableGrid
 
 
 
@@ -116,14 +119,12 @@ VICINITY_RECT = (
 )
 
 VICINITY_WIDTH, VICINITY_HEIGHT = VICINITY_RECT.size
-vicinity_collides = VICINITY_RECT.colliderect
+vicinity_colliderect = VICINITY_RECT.colliderect
 
 CHUNKS = set()
 
-CHUNKS_ENTERING = set()
-CHUNKS_LEAVING = set()
-
 CHUNKS_IN = set()
+CHUNKS_IN_TEMP = set()
 
 ### layers
 
@@ -134,21 +135,18 @@ LAYER_NAMES = (
     'actors',
 )
 
-LAYER_MAP = {
+
+get_layer_from_name = {
     name: set()
     for name in LAYER_NAMES
-}
+}.__getitem__
 
-get_layer_from_name = LAYER_MAP.__getitem__
+LAYERS = [get_layer_from_name(name) for name in LAYER_NAMES]
 
-LAYERS = [LAYER_MAP[name] for name in LAYER_NAMES]
-
-ON_SCREEN_LAYER_MAP = {
-    name: set()
+ONSCREEN_LAYERS = [
+    set()
     for name in LAYER_NAMES
-}
-
-ON_SCREEN_LAYERS = [ON_SCREEN_LAYER_MAP[name] for name in LAYER_NAMES]
+]
 
 ###
 
@@ -224,8 +222,8 @@ COLOR_KEY = (192, 192, 192)
 asset_data_map = {}
 
 for image_path, has_transparency in chain(
-    (NO_COLORKEY_ASSETS_DIR.iterdir(), False),
-    (COLORKEY_ASSETS_DIR.iterdir(), True),
+    zip(NO_COLORKEY_ASSETS_DIR.iterdir(), repeat(False)),
+    zip(COLORKEY_ASSETS_DIR.iterdir(), repeat(True)),
 ):
 
     ###
@@ -459,7 +457,7 @@ def delete_asset():
 
     for_deletion = []
 
-    for on_screen_layer in ON_SCREEN_LAYERS:
+    for on_screen_layer in ONSCREEN_LAYERS:
 
         for obj in on_screen_layer:
 
@@ -514,25 +512,55 @@ else:
 
 
 
-class LevelChunk(Rect):
+class LevelChunk:
 
     def __init__(self, rect, objs):
 
         ### instantiate rect
-        super().__init__(rect)
+        self.rect = rect.copy()
 
-        ### create layer map and store objects
+        ### store objs
+        self.objs = objs
+
+        ### create and store layers
 
         for layer_name in LAYER_NAMES:
             setattr(self, layer_name, set())
 
+        ### create and store center map, a map to store the
+        ### center of each object relative to this chunk's topleft
+        ###
+        ### also create a local reference to it and an attribute
+        ### referencing its item getter method
+
+        center_map = self.center_map = {}
+        self.get_center = center_map.__getitem__
+
+        ### iterate over objects...
+        ###
+        ### - storing them in layers
+        ### - storing objects centers relative to level's topleft
+
+        topleft = self.rect.topleft
+
         for obj in objs:
 
             obj.chunk = self
+
             getattr(self, obj.layer_name).add(obj)
 
+            center_map[obj] = tuple(
+                offset - center_dim
+                for offset, center_dim in zip(topleft, obj.rect.center)
+            )
 
-CHUNKS = []
+    def position_objs(self):
+
+        get_center = self.get_center
+
+        for obj in self.objs:
+            obj.rect.center = get_center(obj)
+
 
 def instantiate_and_group_objects():
 
@@ -600,7 +628,7 @@ def instantiate_and_group_objects():
             collliding_objs = {
                 obj
                 for obj in obj_set
-                if vicinity_collides(obj.rect)
+                if vicinity_colliderect(obj.rect)
             }
 
             if collliding_objs:
@@ -623,7 +651,7 @@ def instantiate_and_group_objects():
             ## reposition the vicinity at the beginning of the next
             ## imaginary row
 
-            if not vicinity_collides(union_rect):
+            if not vicinity_colliderect(union_rect):
 
                 VICINITY_RECT.left = union_left
                 VICINITY_RECT.y += VICINITY_HEIGHT
@@ -635,14 +663,7 @@ instantiate_and_group_objects()
 def run_app():
     """Run the app's mainloop."""
 
-    VICINITY_RECT.center = SCREEN_RECT.center
-
-    CHUNKS_IN.update(
-        chunk
-        for chunk in CHUNKS
-        if vicinity_collides(chunk)
-    )
-
+    init_chunks()
     list_objects_on_screen()
 
     while True:
@@ -652,6 +673,24 @@ def run_app():
         control()
         update_app()
         draw()
+
+def init_chunks():
+
+    VICINITY_RECT.center = SCREEN_RECT.center
+
+    CHUNKS_IN.update(
+        chunk
+        for chunk in CHUNKS
+        if vicinity_colliderect(chunk)
+    )
+
+    for chunk in CHUNKS_IN:
+
+        for layer_name in LAYER_NAMES:
+
+            get_layer_from_name(layer_name).update(
+                getattr(chunk, layer_name)
+            )
 
 def control():
 
@@ -792,40 +831,89 @@ def scroll(dx, dy):
 
     seamless_drawing_rect.move_ip(dx, dy)
 
-    for layer in LAYERS:
-        for prop in layer:
-            prop.rect.move_ip(dx, dy)
+    update_chunks_and_layers(dx, dy)
 
+    ###
     list_objects_on_screen()
+    ###
 
     scrolling.x += dx
     scrolling.y += dy
 
     update_unit_rect_topleft()
 
-def list_objects_on_screen():
+def update_chunks_and_layers(dx, dy):
+
+    for chunk in CHUNKS:
+        chunk.rect.move_ip(dx, dy)
+
+    ### check current chunks in vicinity
+
+    CHUNKS_IN_TEMP.update(
+        chunk
+        for chunk in CHUNKS
+        if vicinity_colliderect(chunk)
+    )
+
+    ### if it is different from previous chunks in vicinity...
+
+    if CHUNKS_IN != CHUNKS_IN_TEMP:
+
+        ### for the chunks leaving vicinity, remove their objects
+        ### from the layers
+
+        for chunk in (CHUNKS_IN - CHUNKS_IN_TEMP):
+
+            for layer_name in LAYER_NAMES:
+
+                get_layer_from_name(layer_name).difference_update(
+                    getattr(chunk, layer_name)
+                )
+
+        ### for the chunks entering vicinity, add their objects to the layers
+
+        for chunk in (CHUNKS_IN_TEMP - CHUNKS_IN):
+
+            for layer_name in LAYER_NAMES:
+
+                get_layer_from_name(layer_name).update(
+                    getattr(chunk, layer_name)
+                )
+
+        ### update the set of chunks in vicinity
+
+        CHUNKS_IN.clear()
+        CHUNKS_IN.update(CHUNKS_IN_TEMP)
+
+    ### for each chunk in vicinity, reposition their objects
 
     for chunk in CHUNKS_IN:
+        chunk.position_objs()
 
-            for layer, on_screen in zip(LAYERS, ON_SCREEN_LAYERS):
+    ### clear temporary chunks collection
+    CHUNKS_IN_TEMP.clear()
 
-                on_screen.clear()
+def list_objects_on_screen():
 
-                on_screen.update(
-                    obj
-                    for obj in layer
-                    if screen_colliderect(obj.rect)
-                )
+    for layer, on_screen in zip(LAYERS, ONSCREEN_LAYERS):
+
+        on_screen.clear()
+
+        on_screen.update(
+            obj
+            for obj in layer
+            if screen_colliderect(obj.rect)
+        )
 
 def normal_draw_objects():
 
-    for on_screen_layer in ON_SCREEN_LAYERS:
+    for on_screen_layer in ONSCREEN_LAYERS:
         for prop in on_screen_layer:
             prop.draw()
 
 def outline_draw_objects():
 
-    for on_screen_layer in ON_SCREEN_LAYERS:
+    for on_screen_layer in ONSCREEN_LAYERS:
         for prop in on_screen_layer:
             prop.draw_outlined()
 
