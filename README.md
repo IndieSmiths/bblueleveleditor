@@ -5,8 +5,6 @@ Level editor for the [Bionic Blue](https://github.com/IndieSmiths/bionicblue) ga
 > [!WARNING]
 > Rather than a tool for general use, this is a highly crude tool meant for in-house usage. As such, it lacks many features and is susceptible to crashing/malfunctioning and sudden requirement changes.
 
-Depending on your system, you might need to replace `python3` with `python`.
-
 This tool was created by me, Kennedy Richard S. Guerra([website](https://kennedyrichard.com) | [GitHub](https://github.com/KennedyRichard)), 34, as part of the Indie Smiths project ([website](https://indiesmiths.com) | [GitHub](https://github.com/IndieSmiths)).
 
 Please, help support my work on this and many other child projects of the Indie Smiths project (the Bionic Blue game, the Nodezator node editor and more) by becoming our [patron](https://patreon.com/KennedyRichard), sponsoring us on [GitHub Sponsors](https://github.com/sponsors/KennedyRichard) or via [other available methods](https://indiesmiths.com/donate).
@@ -32,6 +30,8 @@ To launch it, download the repo, then from inside the repository folder, with a 
 ```
 python3 -m bblueleveleditor
 ```
+
+Depending on your system, you might need to replace `python3` with `python`.
 
 The `wasd` keys move the canvas.
 
