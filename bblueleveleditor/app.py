@@ -78,8 +78,13 @@ from .grid import ScrollableGrid
 
 ### module level objs/constants
 
-## vector representing origin
-origin = Vector2()
+## vector representing first point where there's content
+## in the level, that is, the topleft of the topleftmost
+## object, or (0, 0) if the level is empty
+##
+## this point is used as the starting point from where to place
+## level chunks
+content_origin = Vector2()
 
 ## vector to keep track of scrolling
 scrolling = Vector2()
@@ -307,11 +312,41 @@ def add_seamless_asset():
 
     obj_list.append(data)
 
-    layer = get_layer_from_name(layer_name)
+    ###
 
-    layer.add(
-      Object2D(data, pos_name, scrolled_pos)
-    )
+    obj = Object2D(data, pos_name, scrolled_pos)
+    obj.layer_name = layer_name
+
+    ###
+    layer.add(obj)
+
+    ### if an existing chunk collides add obj to that chunk
+
+    for chunk in chain(CHUNKS_IN, CHUNKS):
+
+        if chunk.rect.colliderect(union):
+
+            chunk.add_obj(obj)
+            break
+
+    ### otherwise create a new chunk
+
+    else:
+
+        chunk_anchor_pos = union.center
+        unscrolled_anchor_pos = chunk_anchor_pos - scrolling
+        pos_from_origin = unscrolled_anchor_pos - content_origin
+
+        left_multiplier = pos_from_origin.x // VICINITY_WIDTH
+        top_multiplier = pos_from_origin.y // VICINITY_HEIGHT
+
+        left = left_multiplier * VICINITY_WIDTH
+        top = top_multiplier * VICINITY_HEIGHT
+
+        VICINITY_RECT.topleft = (left, top)
+        new_chunk = LevelChunk(VICINITY_RECT, {obj})
+
+        VICINITY_RECT.center = SCREEN_RECT.center
 
     list_objects_on_screen()
 
@@ -328,8 +363,6 @@ def add_asset():
 
     obj_list = layered_objects.setdefault(layer_name, [])
 
-    layer = get_layer_from_name(layer_name)
-
     for obj_data in obj_list:
 
         if (
@@ -345,9 +378,45 @@ def add_asset():
 
     obj_list.append(data)
 
-    layer.add(
-      Object2D(data, pos_name, scrolled_pos)
-    )
+    ###
+
+    obj = Object2D(data, pos_name, scrolled_pos)
+    obj.layer_name = layer_name
+
+    ###
+
+    layer = get_layer_from_name(layer_name)
+    layer.add(obj)
+
+    ### if an existing chunk collides add obj to that chunk
+
+    rect = obj.rect
+
+    for chunk in chain(CHUNKS_IN, CHUNKS):
+
+        if chunk.rect.colliderect(rect):
+
+            chunk.add_obj(obj)
+            break
+
+    ### otherwise create a new chunk
+
+    else:
+
+        chunk_anchor_pos = rect.center
+        unscrolled_anchor_pos = chunk_anchor_pos - scrolling
+        pos_from_origin = unscrolled_anchor_pos - content_origin
+
+        left_multiplier = pos_from_origin.x // VICINITY_WIDTH
+        top_multiplier = pos_from_origin.y // VICINITY_HEIGHT
+
+        left = left_multiplier * VICINITY_WIDTH
+        top = top_multiplier * VICINITY_HEIGHT
+
+        VICINITY_RECT.topleft = (left, top)
+        new_chunk = LevelChunk(VICINITY_RECT, {obj})
+
+        VICINITY_RECT.center = SCREEN_RECT.center
 
     list_objects_on_screen()
 
@@ -567,6 +636,19 @@ class LevelChunk:
                 for chunk_pos, obj_center_offset in zip(topleft, get_center(obj))
             )
 
+    def add_obj(self, obj):
+
+        obj.chunk = self
+
+        self.objs.add(obj)
+
+        getattr(self, obj.layer_name).add(obj)
+
+        self.center_map[obj] = tuple(
+            chunk_pos - obj_center_pos
+            for chunk_pos, obj_center_pos in zip(self.rect.topleft, obj.rect.center)
+        )
+
 
 def instantiate_and_group_objects():
 
@@ -595,7 +677,7 @@ def instantiate_and_group_objects():
         obj = objs[0]
 
         VICINITY_RECT.topleft = obj.topleft
-        origin.update(obj.topleft)
+        content_origin.update(obj.topleft)
 
         CHUNKS.add(LevelChunk(VICINITY_RECT, objs))
 
@@ -614,7 +696,7 @@ def instantiate_and_group_objects():
 
         )
 
-        origin.update(union_rect.topleft)
+        content_origin.update(union_rect.topleft)
 
         ## prepare to loop while evaluating whether objects
         ## and the union rect collide with the vicinity
