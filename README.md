@@ -70,4 +70,8 @@ Likewise, the exported .png file will be overwritten everytime you export the le
 
 ## More info
 
-For now, I actually indicate whether an asset is seamless or not using and other properties of the asset in its name. For instance, consider the name of the grunt robot asset: `grunt_bot.actors.False.midbottom.png`. The `.actors` part indicates it is to be placed in the `actors` layer. The `False` part indicates it is not a seamless asset. Finally the `midbottom` part indicates the stored position for the asset refers to the asset midbottom corner. It means it is to be placed aligned with its midbottom corner at the given position in the level file. It defines how to anchor an asset in the level.
+For now, I actually indicate whether an asset is seamless or not and other properties of the asset in its name.
+
+For instance, consider the name of the grunt robot asset: `grunt_bot.actors.False.midbottom.png`.
+
+The `.actors` part indicates it is to be placed in the `actors` layer. The `False` part indicates it is not a seamless asset. Finally the `midbottom` part indicates which corner of the asset the position should be assigned to. That is, in this case it means the position data stored for the robot should be assigned to the robot's midbottom corner. You can use any of the 9 points defined in a `pygame.Rect`, that is, `topleft`, `topright`, `center`, etc.
