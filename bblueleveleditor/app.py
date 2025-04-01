@@ -1022,16 +1022,10 @@ REFS.draw_objects = normal_draw_objects
 
 def save_level_as_png():
 
-    ### scroll chunks and objs back to origin
-
-    dx, dy = -scrolling
+    ### position objs relative to their chunks
 
     for chunk in CHUNKS:
-
-        chunk.rect.move_ip(dx, dy)
         chunk.position_objs()
-
-    ### create set with all objects
 
     ### create rect union from them
 
@@ -1041,33 +1035,27 @@ def save_level_as_png():
         for obj in chunk.objs
     )
 
-    union = one.rect.union_all([obj.rect for obj in rest])
+    union = one.rect.unionall([obj.rect for obj in rest])
 
     ### create surface from that rect union and fill it
 
     s = Surface(union.size).convert()
     s.fill(BG_COLOR)
 
-    ### blit objects in it, layer by layer
+    ### blit objects in it, layer by layer, as we offset
+    ### their rects by the union's topleft
+
+    offset_x, offset_y = (-coord for coord in union.topleft)
 
     blit_on_surf = s.blit
 
     for chunk in CHUNKS:
 
-        for layer in LAYER_NAMES:
+        for layer_name in LAYER_NAMES:
 
             for obj in getattr(chunk, layer_name):
 
-                blit_on_surf(obj.image, obj.rect)
+                blit_on_surf(obj.image, obj.rect.move(offset_x, offset_y))
 
     ### save layer on disk as image
     save_image(s, str(LEVELS_DIR / 'level.png'))
-
-    ### scroll chunks and objs back to their original positions
-
-    dx, dy = scrolling
-
-    for chunk in CHUNKS:
-
-        chunk.rect.move_ip(dx, dy)
-        chunk.position_objs()
