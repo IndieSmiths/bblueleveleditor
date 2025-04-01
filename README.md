@@ -59,9 +59,13 @@ The `r` key toggles the outlines of assets (which are easier to see when the gri
 
 ![toggling asset outlines](https://i.imgur.com/FFWOk5d.gif)
 
-Press `v` to save the file and press the `Escape` key to quit the program.
+Press `v` to save the level file (.lvl), press `p` to export the level as a .png image and press the `Escape` key to quit the program.
 
-The saved `.lvl` file appears in the `bblueleveleditor/levels` folder created automatically within the repo (the folder is ignored by git/not tracked). To create and edit a new file, empty the folder (for instance, by moving an existing .lvl file to another location in your disk) and launch the editor again. When you save, a new .lvl file will be created there again. This is convoluted and may be improved in the future, but it is not actually a problem at all: as I said before this tool is supposed to be very basic and simple, so I can quickly create the levels I need and move on to the next development task of the game.
+The saved `.lvl` or exported `.png` file appears in the `bblueleveleditor/levels` folder created automatically within the repo (the folder is ignored by git/not tracked).
+
+To create and edit a new level file, empty the folder (for instance, by moving an existing .lvl file to another location in your disk) and launch the editor again. When you save, a new .lvl file will be created there again. This is convoluted and may be improved in the future, but it is not actually a problem at all: as I said before this tool is supposed to be very basic and simple, so I can quickly create the levels I need and move on to the next development task of the game.
+
+Likewise, the exported .png file will be overwritten everytime you export the level as .png. However, you don't need to move the .png out of the folder for a new one to be saved there. Renaming it will suffice.
 
 
 ## More info
