@@ -344,10 +344,11 @@ def add_seamless_asset():
         top = top_multiplier * VICINITY_HEIGHT
 
         VICINITY_RECT.topleft = (left, top)
-        new_chunk = LevelChunk(VICINITY_RECT, {obj})
+        CHUNKS.add(LevelChunk(VICINITY_RECT, {obj}))
 
         VICINITY_RECT.center = SCREEN_RECT.center
 
+    update_chunks_and_layers()
     list_objects_on_screen()
 
 def add_asset():
@@ -413,10 +414,11 @@ def add_asset():
         top = top_multiplier * VICINITY_HEIGHT
 
         VICINITY_RECT.topleft = (left, top)
-        new_chunk = LevelChunk(VICINITY_RECT, {obj})
+        CHUNKS.add(LevelChunk(VICINITY_RECT, {obj}))
 
         VICINITY_RECT.center = SCREEN_RECT.center
 
+    update_chunks_and_layers()
     list_objects_on_screen()
 
 def begin_adding_assets():
@@ -729,16 +731,16 @@ def instantiate_and_group_objects():
             ## store them in their own level chunk and remove
             ## them from the set of objects
 
-            collliding_objs = {
+            colliding_objs = {
                 obj
                 for obj in obj_set
                 if vicinity_colliderect(obj.rect)
             }
 
-            if collliding_objs:
+            if colliding_objs:
 
-                obj_set -= collliding_objs
-                CHUNKS.add(LevelChunk(VICINITY_RECT, collliding_objs))
+                obj_set -= colliding_objs
+                CHUNKS.add(LevelChunk(VICINITY_RECT, colliding_objs))
 
             ## if there's no obj left in the set, break out of loop
 
@@ -769,7 +771,7 @@ def run_app():
 
     VICINITY_RECT.center = SCREEN_RECT.center
 
-    update_chunks_and_layers(0, 0)
+    update_chunks_and_layers()
     list_objects_on_screen()
 
     while True:
@@ -920,9 +922,11 @@ def scroll(dx, dy):
 
     seamless_drawing_rect.move_ip(dx, dy)
 
-    update_chunks_and_layers(dx, dy)
+    for chunk in CHUNKS:
+        chunk.rect.move_ip(dx, dy)
 
     ###
+    update_chunks_and_layers()
     list_objects_on_screen()
     ###
 
@@ -931,10 +935,7 @@ def scroll(dx, dy):
 
     update_unit_rect_topleft()
 
-def update_chunks_and_layers(dx, dy):
-
-    for chunk in CHUNKS:
-        chunk.rect.move_ip(dx, dy)
+def update_chunks_and_layers():
 
     ### check current chunks in vicinity
 
