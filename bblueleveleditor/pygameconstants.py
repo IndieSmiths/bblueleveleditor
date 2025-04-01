@@ -42,6 +42,7 @@ SCREEN = set_mode((320, 180), SCALED, 32)
 SCREEN_RECT = SCREEN.get_rect()
 blit_on_screen = SCREEN.blit
 fill_screen = SCREEN.fill
+BG_COLOR = 'lightblue'
 
 SCREEN_WIDTH, SCREEN_HEIGHT = SCREEN_RECT.size
 
