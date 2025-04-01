@@ -30,7 +30,9 @@ from pygame import (
 
     K_w, K_a, K_s, K_d,
 
-    K_q, K_e, K_x, K_r, K_v, K_g,
+    K_q, K_e,
+
+    K_x, K_r, K_v, K_g, K_p,
 
     Rect, Surface,
     quit as quit_pygame,
@@ -49,7 +51,7 @@ from pygame.mouse import get_pos as get_mouse_pos
 
 from pygame.draw import rect as draw_rect, circle as draw_circle
 
-from pygame.image import load as load_image
+from pygame.image import load as load_image, save as save_image
 
 from pygame.font import Font
 
@@ -64,7 +66,10 @@ from .config import (
 )
 
 from .pygameconstants import (
-    FPS, SCREEN, SCREEN_RECT,
+    FPS,
+    SCREEN,
+    SCREEN_RECT,
+    BG_COLOR,
     maintain_fps,
     fill_screen,
     blit_on_screen,
@@ -787,12 +792,7 @@ def control():
 
     for event in get_events():
 
-        if event.type == QUIT:
-
-            quit_pygame()
-            quit()
-
-        elif event.type == MOUSEBUTTONDOWN:
+        if event.type == MOUSEBUTTONDOWN:
 
             if event.button == 1:
                 REFS.on_mouse_click()
@@ -846,10 +846,18 @@ def control():
             elif event.key == K_v:
                 level_path.write_text(pformat(level_data), encoding='utf-8')
 
+            elif event.key == K_p:
+                save_level_as_png()
+
             elif event.key == K_ESCAPE:
 
                 quit_pygame()
                 quit()
+
+        elif event.type == QUIT:
+
+            quit_pygame()
+            quit()
 
     ###
 
@@ -872,7 +880,7 @@ def update_app():
 
 def draw():
 
-    fill_screen('lightblue')
+    fill_screen(BG_COLOR)
 
     REFS.draw_objects()
 
@@ -1011,3 +1019,55 @@ def outline_draw_objects():
 
 
 REFS.draw_objects = normal_draw_objects
+
+def save_level_as_png():
+
+    ### scroll chunks and objs back to origin
+
+    dx, dy = -scrolling
+
+    for chunk in CHUNKS:
+
+        chunk.rect.move_ip(dx, dy)
+        chunk.position_objs()
+
+    ### create set with all objects
+
+    ### create rect union from them
+
+    one, *rest = (
+        obj
+        for chunk in CHUNKS
+        for obj in chunk.objs
+    )
+
+    union = one.rect.union_all([obj.rect for obj in rest])
+
+    ### create surface from that rect union and fill it
+
+    s = Surface(union.size).convert()
+    s.fill(BG_COLOR)
+
+    ### blit objects in it, layer by layer
+
+    blit_on_surf = s.blit
+
+    for chunk in CHUNKS:
+
+        for layer in LAYER_NAMES:
+
+            for obj in getattr(chunk, layer_name):
+
+                blit_on_surf(obj.image, obj.rect)
+
+    ### save layer on disk as image
+    save_image(s, str(LEVELS_DIR / 'level.png'))
+
+    ### scroll chunks and objs back to their original positions
+
+    dx, dy = scrolling
+
+    for chunk in CHUNKS:
+
+        chunk.rect.move_ip(dx, dy)
+        chunk.position_objs()
