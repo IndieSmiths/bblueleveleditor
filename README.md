@@ -3,7 +3,7 @@
 Level editor for the [Bionic Blue](https://github.com/IndieSmiths/bionicblue) game.
 
 > [!WARNING]
-> Rather than a tool for general use, this is a highly crude tool meant for in-house usage. As such, it lacks many features and is susceptible to crashing/malfunctioning and sudden requirement changes.
+> Rather than a tool for general use, this is a crude tool meant for in-house usage. As such, it lacks many features and is susceptible to crashing/malfunctioning and sudden requirement changes; usually, though, it works effectively and efficiently/smoothly for the purposes for which it was created, and since it is so bare-bones/basic, it is very low-maintenance.
 
 This tool was created by me, Kennedy Richard S. Guerra([website](https://kennedyrichard.com) | [GitHub](https://github.com/KennedyRichard)), 34, as part of the Indie Smiths project ([website](https://indiesmiths.com) | [GitHub](https://github.com/IndieSmiths)).
 
@@ -59,13 +59,26 @@ The `r` key toggles the outlines of assets (which are easier to see when the gri
 
 ![toggling asset outlines](https://i.imgur.com/FFWOk5d.gif)
 
-Press `v` to save the level file (.lvl), press `p` to export the level as a .png image and press the `Escape` key to quit the program.
+Press `v` to save the level file (.lvl), press `p` to export the level as a .png image (hold `Shift` while doing that to also outline the different divisions of the level, as explained in the level chunk management section further ahead) and press the `Escape` key to quit the program.
 
 The saved `.lvl` or exported `.png` file appears in the `bblueleveleditor/levels` folder created automatically within the repo (the folder is ignored by git/not tracked).
 
 To create and edit a new level file, empty the folder (for instance, by moving an existing .lvl file to another location in your disk) and launch the editor again. When you save, a new .lvl file will be created there again. This is convoluted and may be improved in the future, but it is not actually a problem at all: as I said before this tool is supposed to be very basic and simple, so I can quickly create the levels I need and move on to the next development task of the game.
 
 Likewise, the exported .png file will be overwritten everytime you export the level as .png. However, you don't need to move the .png out of the folder for a new one to be saved there. Renaming it will suffice.
+
+
+## Level chunk management
+
+This level editor has a feature called level chunk management. It consists in the automatic division and management of a level in chunks for the purpose of being able to handle many more objects at once.
+
+Before this, whenever the level moved (i. e., scrolled), all objects in the level were moved and then checked for collision with the screen to determine which should be drawn.
+
+Now the level is divided in chunks. Only the chunks are moved and then they are checked for collision with the screen (actually, we use an area that expands beyond the screen). Only such chunks have their objects checked for collision with the screen, making everything much more efficient than checking all objects in the level.
+
+Implementing chunk creation and management didn't require us to change the data model either, because the chunks are created only when the level is loaded, grouping the objects is handled automatically by our algorithm. In other words, this feature doesn't require data to added to the .lvl files.
+
+This technology was also implemented on the [game itself](https://github.com/IndieSmiths/bionicblue) and will likely be used in other sibling projects (child projects of the Indie Smiths project) as opportune.
 
 
 ## More info
