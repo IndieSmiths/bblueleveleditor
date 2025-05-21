@@ -28,6 +28,8 @@ from pygame import (
 
     KEYDOWN, K_ESCAPE, K_HOME,
 
+    KMOD_SHIFT,
+
     K_w, K_a, K_s, K_d,
 
     K_q, K_e,
@@ -863,7 +865,9 @@ def control():
                 level_path.write_text(pformat(level_data), encoding='utf-8')
 
             elif event.key == K_p:
-                save_level_as_png()
+
+                must_outline_chunks = event.mod & KMOD_SHIFT
+                save_level_as_png(must_outline_chunks)
 
             elif event.key == K_ESCAPE:
 
@@ -1035,7 +1039,7 @@ def outline_draw_objects():
 
 REFS.draw_objects = normal_draw_objects
 
-def save_level_as_png():
+def save_level_as_png(must_outline_chunks):
 
     ### position objs relative to their chunks
 
@@ -1071,6 +1075,19 @@ def save_level_as_png():
             for obj in getattr(chunk, layer_name):
 
                 blit_on_surf(obj.image, obj.rect.move(offset_x, offset_y))
+
+    ### if we must outline the chunks, draw their outlines too
+
+    if must_outline_chunks:
+
+        for chunk in CHUNKS:
+
+            draw_rect(
+                s,
+                'purple',
+                chunk.rect.move(offset_x, offset_y),
+                1,
+            )
 
     ### save layer on disk as image
     save_image(s, str(LEVELS_DIR / 'level.png'))
