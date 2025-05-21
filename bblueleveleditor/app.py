@@ -356,6 +356,7 @@ def add_seamless_asset():
     update_chunks_and_layers()
     list_objects_on_screen()
 
+
 def add_asset():
 
     asset_name = REFS.current_asset
@@ -367,7 +368,7 @@ def add_asset():
 
     layer_name = asset_data_map[asset_name]['layer_name']
 
-    obj_list = layered_objects.setdefault(layer_name, [])
+    obj_list = level_data['layered_objects'].setdefault(layer_name, [])
 
     for obj_data in obj_list:
 
