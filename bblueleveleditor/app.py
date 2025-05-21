@@ -322,9 +322,6 @@ def add_seamless_asset():
     ###
     obj = Object2D(data, layer_name, pos_name, scrolled_pos)
 
-    ###
-    layer.add(obj)
-
     ### if an existing chunk collides add obj to that chunk
 
     for chunk in chain(CHUNKS_IN, CHUNKS):
@@ -332,11 +329,17 @@ def add_seamless_asset():
         if chunk.rect.colliderect(union):
 
             chunk.add_obj(obj)
+            layer.add(obj)
             break
 
     ### otherwise create a new chunk
 
     else:
+        
+        ## note: we don't need to add the object to the layer here,
+        ## because it will be added for us when this new chunk is added
+        ## to the set of chunks in vicinity (CHUNKS_IN) inside
+        ## update_chunks_and_layers()
 
         chunk_anchor_pos = union.center
         unscrolled_anchor_pos = chunk_anchor_pos - scrolling
@@ -348,13 +351,17 @@ def add_seamless_asset():
         left = left_multiplier * VICINITY_WIDTH
         top = top_multiplier * VICINITY_HEIGHT
 
-        VICINITY_RECT.topleft = (left, top)
+        VICINITY_RECT.topleft = (
+            (left, top)
+            + scrolling
+            + content_origin
+        )
+
         CHUNKS.add(LevelChunk(VICINITY_RECT, {obj}))
 
         VICINITY_RECT.center = SCREEN_RECT.center
 
     update_chunks_and_layers()
-    list_objects_on_screen()
 
 
 def add_asset():
@@ -392,7 +399,6 @@ def add_asset():
     ###
 
     layer = get_layer_from_name(layer_name)
-    layer.add(obj)
 
     ### if an existing chunk collides add obj to that chunk
 
@@ -403,11 +409,17 @@ def add_asset():
         if chunk.rect.colliderect(rect):
 
             chunk.add_obj(obj)
+            layer.add(obj)
             break
 
     ### otherwise create a new chunk
 
     else:
+
+        ## note: we don't need to add the object to the layer here,
+        ## because it will be added for us when this new chunk is added
+        ## to the set of chunks in vicinity (CHUNKS_IN) inside
+        ## update_chunks_and_layers()
 
         chunk_anchor_pos = rect.center
         unscrolled_anchor_pos = chunk_anchor_pos - scrolling
@@ -419,13 +431,17 @@ def add_asset():
         left = left_multiplier * VICINITY_WIDTH
         top = top_multiplier * VICINITY_HEIGHT
 
-        VICINITY_RECT.topleft = (left, top)
+        VICINITY_RECT.topleft = (
+            (left, top)
+            + scrolling
+            + content_origin
+        )
+
         CHUNKS.add(LevelChunk(VICINITY_RECT, {obj}))
 
         VICINITY_RECT.center = SCREEN_RECT.center
 
     update_chunks_and_layers()
-    list_objects_on_screen()
 
 def begin_adding_assets():
     REFS.mouse_pressed_routine = add_asset
@@ -778,7 +794,6 @@ def run_app():
     VICINITY_RECT.center = SCREEN_RECT.center
 
     update_chunks_and_layers()
-    list_objects_on_screen()
 
     while True:
 
@@ -936,7 +951,6 @@ def scroll(dx, dy):
 
     ###
     update_chunks_and_layers()
-    list_objects_on_screen()
     ###
 
     scrolling.x += dx
@@ -994,7 +1008,7 @@ def update_chunks_and_layers():
     ### clear temporary chunks collection
     CHUNKS_IN_TEMP.clear()
 
-def list_objects_on_screen():
+    ### list objects on screen
 
     for layer, on_screen in zip(LAYERS, ONSCREEN_LAYERS):
 
