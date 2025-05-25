@@ -16,6 +16,7 @@ from math import dist
 
 from warnings import warn
 
+
 ### third-party imports
 
 from pygame import (
@@ -33,6 +34,8 @@ from pygame import (
     K_w, K_a, K_s, K_d,
 
     K_q, K_e,
+
+    K_f,
 
     K_x, K_r, K_v, K_g, K_p,
 
@@ -55,13 +58,12 @@ from pygame.draw import rect as draw_rect, circle as draw_circle
 
 from pygame.image import load as load_image, save as save_image
 
-from pygame.font import Font
+from pygame.transform import rotate as rotate_surface
 
 
 ### local imports
 
 from .config import (
-    FONTS_DIR,
     NO_COLORKEY_ASSETS_DIR,
     COLORKEY_ASSETS_DIR,
     LEVELS_DIR,
@@ -79,6 +81,10 @@ from .pygameconstants import (
 )
 
 from .grid import ScrollableGrid
+
+from .rendertext import render_text
+
+from .labelassist import get_rect_pos_name, get_label_text
 
 
 
@@ -144,6 +150,7 @@ LAYER_NAMES = (
     'middleprops',
     'blocks',
     'actors',
+    'labels',
 )
 
 
@@ -166,7 +173,6 @@ def do_nothing(): pass
 
 ## letter e icon, for when "erasing" assets on canvas
 
-render_text = Font(str(FONTS_DIR/'minimal_5x7.ttf'), 28).render
 
 LETTER_E = render_text('e', False, 'black').convert()
 
@@ -322,7 +328,7 @@ def add_seamless_asset():
     obj_list.append(data)
 
     ###
-    obj = Object2D(data, layer_name, pos_name, scrolled_pos)
+    obj = Object2D.from_asset_data_map(data, layer_name, pos_name, scrolled_pos)
 
     ### if an existing chunk collides add obj to that chunk
 
@@ -396,8 +402,94 @@ def add_asset():
 
     ###
 
-    obj = Object2D(data, layer_name, pos_name, scrolled_pos)
+    obj = Object2D.from_asset_data_map(data, layer_name, pos_name, scrolled_pos)
 
+    ###
+
+    layer = get_layer_from_name(layer_name)
+
+    ### if an existing chunk collides add obj to that chunk
+
+    rect = obj.rect
+
+    for chunk in chain(CHUNKS_IN, CHUNKS):
+
+        if chunk.rect.colliderect(rect):
+
+            chunk.add_obj(obj)
+            layer.add(obj)
+            break
+
+    ### otherwise create a new chunk
+
+    else:
+
+        ## note: we don't need to add the object to the layer here,
+        ## because it will be added for us when this new chunk is added
+        ## to the set of chunks in vicinity (CHUNKS_IN) inside
+        ## update_chunks_and_layers()
+
+        chunk_anchor_pos = rect.center
+        unscrolled_anchor_pos = chunk_anchor_pos - scrolling
+        pos_from_origin = unscrolled_anchor_pos - content_origin
+
+        left_multiplier = pos_from_origin.x // VICINITY_WIDTH
+        top_multiplier = pos_from_origin.y // VICINITY_HEIGHT
+
+        left = left_multiplier * VICINITY_WIDTH
+        top = top_multiplier * VICINITY_HEIGHT
+
+        VICINITY_RECT.topleft = (
+            (left, top)
+            + scrolling
+            + content_origin
+        )
+
+        CHUNKS.add(LevelChunk(VICINITY_RECT, {obj}))
+
+        VICINITY_RECT.center = SCREEN_RECT.center
+
+    update_chunks_and_layers()
+
+def add_label():
+
+    pos_name = get_rect_pos_name()
+
+    if pos_name is None:
+        return
+
+    label_text = get_label_text()
+
+    if not label_text:
+        return
+
+    scrolled_pos = getattr(unit_rect, pos_name)
+
+    unscrolled_pos = tuple(map(int, scrolled_pos - scrolling))
+
+    layer_name = 'labels'
+
+    obj_list = level_data['layered_objects'].setdefault(layer_name, [])
+
+    for obj_data in obj_list:
+
+        if (
+            obj_data['pos'] == unscrolled_pos
+            and obj_data['name'] == 'label'
+        ):
+            return
+
+    data = {
+        'name': 'label',
+        'text': label_text,
+        'pos_name': pos_name,
+        'pos': unscrolled_pos,
+    }
+
+    obj_list.append(data)
+    ###
+
+    obj = Object2D.from_text(data, layer_name, pos_name, scrolled_pos)
     ###
 
     layer = get_layer_from_name(layer_name)
@@ -454,12 +546,25 @@ def stop_adding_assets():
 
 class Object2D:
 
-    def __init__(self, data, layer_name, pos_name, pos):
+    def __init__(self, data, layer_name, pos_name, pos, surf):
 
         self.data = data
         self.layer_name = layer_name
 
         name = self.name = data['name']
+
+        ###
+        self.image = surf
+        ###
+
+        self.rect = self.image.get_rect()
+
+        setattr(self.rect, pos_name, pos)
+
+    @classmethod
+    def from_asset_data_map(cls, data, layer_name, pos_name, pos):
+
+        name = data['name']
 
         if 'size' in data:
 
@@ -467,21 +572,36 @@ class Object2D:
             key = name, size
 
             try:
-                self.image = SEAMLESS_SURFS_MAP[key]
+                surf = SEAMLESS_SURFS_MAP[key]
 
             except KeyError:
 
                 unit_surf = asset_data_map[name]['surf']
 
-                image = new_seamless_image(unit_surf, size)
-                self.image = SEAMLESS_SURFS_MAP[key] = image
+                surf = new_seamless_image(unit_surf, size)
+                SEAMLESS_SURFS_MAP[key] = surf
 
         else:
-            self.image = asset_data_map[name]['surf']
+            surf = asset_data_map[name]['surf']
 
-        self.rect = self.image.get_rect()
+        return cls(
+            data,
+            layer_name,
+            pos_name,
+            pos,
+            surf,
+        )
 
-        setattr(self.rect, pos_name, pos)
+    @classmethod
+    def from_text(cls, data, layer_name, pos_name, pos):
+
+        return cls(
+            data,
+            'labels',
+            pos_name,
+            pos,
+            get_label_surface(data['text'], pos_name),
+        )
 
     def draw(self):
         blit_on_screen(self.image, self.rect)
@@ -489,6 +609,62 @@ class Object2D:
     def draw_outlined(self):
         self.draw()
         draw_rect(SCREEN, 'black', self.rect, 1)
+
+
+def get_label_surface(text, pos_name):
+
+    full_text_surf = render_text(text, False, 'white')
+
+    horiz_infl = 2
+    vert_infl = 10
+
+    if pos_name == 'midtop':
+        full_text_surf = rotate_surface(full_text_surf, -90)
+
+    elif pos_name == 'midbottom':
+        full_text_surf = rotate_surface(full_text_surf, 90)
+
+    else:
+        horiz_infl, vert_infl = vert_infl, horiz_infl
+
+    text_rect = full_text_surf.get_bounding_rect()
+    text_surf = full_text_surf.subsurface(text_rect)
+
+    irect = text_rect.inflate(horiz_infl, vert_infl)
+
+    surf = Surface(irect.size).convert()
+    surf.fill('black')
+
+    irect.topleft = (0, 0)
+
+    draw_circle(
+        surf,
+        'yellow',
+        getattr(irect.inflate(-2, -2), pos_name),
+        4,
+    )
+
+    ###
+
+    text_rect.center = irect.center
+
+    if 'left' in pos_name:
+        text_rect.right = irect.right - 2
+
+    elif 'right' in pos_name:
+        text_rect.left = irect.left + 2
+
+    elif 'top' in pos_name:
+        text_rect.bottom = irect.bottom - 2
+
+    elif 'bottom' in pos_name:
+        text_rect.top = irect.top + 2
+
+    surf.blit(text_surf, text_rect)
+
+    ###
+
+    return surf
 
 def new_seamless_image(surf, size):
 
@@ -695,11 +871,21 @@ def instantiate_and_group_objects():
 
     objs = [
 
-        Object2D(
+        Object2D.from_text(
             obj_data,
-            layer_name,
-            asset_data_map[obj_data['name']]['pos_name'],
-            obj_data['pos']
+            'labels',
+            obj_data['pos_name'],
+            obj_data['pos'],
+        )
+        if layer_name == 'labels'
+
+        else (
+            Object2D.from_asset_data_map(
+                obj_data,
+                layer_name,
+                asset_data_map[obj_data['name']]['pos_name'],
+                obj_data['pos']
+            )
         )
 
         for layer_name, objs in layered_objects.items()
@@ -868,6 +1054,9 @@ def control():
 
                 must_outline_chunks = event.mod & KMOD_SHIFT
                 save_level_as_png(must_outline_chunks)
+
+            elif event.key == K_f:
+                add_label()
 
             elif event.key == K_ESCAPE:
 
