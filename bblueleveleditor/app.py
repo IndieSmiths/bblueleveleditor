@@ -58,7 +58,7 @@ from pygame.draw import rect as draw_rect, circle as draw_circle
 
 from pygame.image import load as load_image, save as save_image
 
-from pygame.transform import rotate as rotate_surface
+from pygame.transform import rotate as rotate_surface, flip as flip_surface
 
 
 ### local imports
@@ -199,6 +199,8 @@ REFS.is_deleting = False
 REFS.mouse_pressed_routine = do_nothing
 REFS.seamless_area_drawing_routine = do_nothing
 
+REFS.left_or_right = 'right'
+
 
 ## delta map for scrolling level
 
@@ -236,7 +238,7 @@ DELTA_MAP = {
 
 COLOR_KEY = (192, 192, 192)
 
-asset_data_map = {}
+asset_spec_map = {}
 
 for image_path, has_transparency in chain(
     zip(NO_COLORKEY_ASSETS_DIR.iterdir(), repeat(False)),
@@ -252,7 +254,7 @@ for image_path, has_transparency in chain(
         warn("Non-PNG image asset ignored.", RuntimeWarning)
         continue
 
-    layer_name, is_seamless, pos_name, _ = image_path.suffixes
+    layer_name, is_seamless, orientation, pos_name, _ = image_path.suffixes
 
     ###
     surf = load_image(str(image_path)).convert()
@@ -264,7 +266,7 @@ for image_path, has_transparency in chain(
 
     asset_name = name[:name.index('.')]
 
-    asset_data_map[asset_name] = {
+    asset_spec_map[asset_name] = {
         'name' : asset_name,
         'layer_name' : layer_name[1:],
         'pos_name': pos_name[1:],
@@ -272,7 +274,10 @@ for image_path, has_transparency in chain(
         'surf' : surf,
     }
 
-asset_name_deque = deque(sorted(asset_data_map))
+    if orientation[1:] == 'lr':
+        asset_spec_map[asset_name]['surf_left'] = flip_surface(surf, True, False)
+
+asset_name_deque = deque(sorted(asset_spec_map))
 
 seamless_drawing_rect = unit_rect.copy()
 
@@ -296,13 +301,13 @@ def add_seamless_asset():
     union = unit_rect.union(seamless_drawing_rect)
 
     asset_name = REFS.current_asset
-    pos_name = asset_data_map[asset_name]['pos_name']
+    pos_name = asset_spec_map[asset_name]['pos_name']
 
     scrolled_pos = getattr(union, pos_name)
 
     unscrolled_pos = tuple(map(int, scrolled_pos - scrolling))
 
-    layer_name = asset_data_map[asset_name]['layer_name']
+    layer_name = asset_spec_map[asset_name]['layer_name']
 
     layer = get_layer_from_name(layer_name)
 
@@ -328,7 +333,12 @@ def add_seamless_asset():
     obj_list.append(data)
 
     ###
-    obj = Object2D.from_asset_data_map(data, layer_name, pos_name, scrolled_pos)
+    obj = Object2D.from_asset_spec_map(
+        data,
+        layer_name,
+        pos_name,
+        scrolled_pos,
+    )
 
     ### if an existing chunk collides add obj to that chunk
 
@@ -375,13 +385,13 @@ def add_seamless_asset():
 def add_asset():
 
     asset_name = REFS.current_asset
-    pos_name = asset_data_map[asset_name]['pos_name']
+    pos_name = asset_spec_map[asset_name]['pos_name']
 
     scrolled_pos = getattr(unit_rect, pos_name)
 
     unscrolled_pos = tuple(map(int, scrolled_pos - scrolling))
 
-    layer_name = asset_data_map[asset_name]['layer_name']
+    layer_name = asset_spec_map[asset_name]['layer_name']
 
     obj_list = level_data['layered_objects'].setdefault(layer_name, [])
 
@@ -398,11 +408,22 @@ def add_asset():
         'pos': unscrolled_pos,
     }
 
+    if (
+        'surf_left' in asset_spec_map[asset_name]
+        and REFS.left_or_right == 'left'
+    ):
+        data['facing_right'] = False
+
     obj_list.append(data)
 
     ###
 
-    obj = Object2D.from_asset_data_map(data, layer_name, pos_name, scrolled_pos)
+    obj = Object2D.from_asset_spec_map(
+        data,
+        layer_name,
+        pos_name,
+        scrolled_pos,
+    )
 
     ###
 
@@ -562,7 +583,7 @@ class Object2D:
         setattr(self.rect, pos_name, pos)
 
     @classmethod
-    def from_asset_data_map(cls, data, layer_name, pos_name, pos):
+    def from_asset_spec_map(cls, data, layer_name, pos_name, pos):
 
         name = data['name']
 
@@ -576,13 +597,24 @@ class Object2D:
 
             except KeyError:
 
-                unit_surf = asset_data_map[name]['surf']
+                unit_surf = asset_spec_map[name]['surf']
 
                 surf = new_seamless_image(unit_surf, size)
                 SEAMLESS_SURFS_MAP[key] = surf
 
         else:
-            surf = asset_data_map[name]['surf']
+
+            surf = (
+
+                asset_spec_map[name]['surf_left']
+                if (
+                    'surf_left' in asset_spec_map[name]
+                    and REFS.left_or_right == 'left'
+                )
+
+                else asset_spec_map[name]['surf']
+
+            )
 
         return cls(
             data,
@@ -697,10 +729,24 @@ def new_seamless_image(surf, size):
 def update_asset_refs():
 
     asset_name = REFS.current_asset = asset_name_deque[0]
+    is_seamless = asset_spec_map[asset_name]['is_seamless']
 
-    REFS.asset_surf = asset_data_map[asset_name]['surf']
 
-    if asset_data_map[asset_name]['is_seamless']:
+    if is_seamless:
+        REFS.asset_surf = asset_spec_map[asset_name]['surf']
+
+    elif 'surf_left' in asset_spec_map[asset_name]:
+
+        REFS.asset_surf = (
+
+            asset_spec_map[asset_name]['surf']
+            if REFS.left_or_right == 'right'
+
+            else asset_spec_map[asset_name]['surf_left']
+
+        )
+
+    if is_seamless:
 
         REFS.on_mouse_click   = track_and_show_seamless_area
         REFS.on_mouse_release = add_seamless_asset
@@ -880,10 +926,10 @@ def instantiate_and_group_objects():
         if layer_name == 'labels'
 
         else (
-            Object2D.from_asset_data_map(
+            Object2D.from_asset_spec_map(
                 obj_data,
                 layer_name,
-                asset_data_map[obj_data['name']]['pos_name'],
+                asset_spec_map[obj_data['name']]['pos_name'],
                 obj_data['pos']
             )
         )
@@ -1013,9 +1059,18 @@ def control():
 
             if event.key in (K_q, K_e):
 
-                asset_name_deque.rotate(
-                    -1 if event.key == K_e else 1
-                )
+                if event.mod & KMOD_SHIFT:
+
+                    REFS.left_or_right = (
+                        'right'
+                        if REFS.left_or_right == 'left'
+                        else 'left'
+                    )
+
+                else:
+                    asset_name_deque.rotate(
+                        -1 if event.key == K_e else 1
+                    )
 
                 update_asset_refs()
 
@@ -1098,7 +1153,7 @@ def draw():
     REFS.draw_unit_grid()
     REFS.draw_screen_grid()
 
-    asset_data = asset_data_map[REFS.current_asset]
+    asset_data = asset_spec_map[REFS.current_asset]
 
     blit_on_screen(REFS.asset_surf, tuple(v + 6 for v in get_mouse_pos()))
 

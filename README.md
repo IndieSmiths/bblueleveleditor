@@ -43,6 +43,8 @@ The `q` and `e` switch between available assets:
 
 ![switching between available assets](https://i.imgur.com/rTbXaEk.gif)
 
+If you hold the `Shift` key when pressing `q` or `e` and the asset can face left or right, it will flip the asset in the opposite direction (left or right).
+
 If the asset is of seamless type, that is, it can expand over a larger area, like the city block asset for instance, you can click and drag on the screen to "paint" it over that area.
 
 ![painting seamless assets over larger areas](https://i.imgur.com/spWG3Df.gif)
@@ -85,6 +87,6 @@ This technology was also implemented on the [game itself](https://github.com/Ind
 
 For now, I actually indicate whether an asset is seamless or not and other properties of the asset in its name.
 
-For instance, consider the name of the grunt robot asset: `grunt_bot.actors.False.midbottom.png`.
+For instance, consider the name of the grunt robot asset: `grunt_bot.actors.False.lr.midbottom.png`.
 
-The `.actors` part indicates it is to be placed in the `actors` layer. The `False` part indicates it is not a seamless asset. Finally the `midbottom` part indicates which corner of the asset the position should be assigned to. That is, in this case it means the position data stored for the robot should be assigned to the robot's midbottom corner. You can use any of the 9 points defined in a `pygame.Rect`, that is, `topleft`, `topright`, `center`, etc.
+The `.actors` part indicates it is to be placed in the `actors` layer. The `False` part indicates it is not a seamless asset. The `lr` means the asset can be oriented to the left or right. Finally the `midbottom` part indicates which corner of the asset the position should be assigned to. That is, in this case it means the position data stored for the robot should be assigned to the robot's midbottom corner. You can use any of the 9 points defined in a `pygame.Rect`, that is, `topleft`, `topright`, `center`, etc.
