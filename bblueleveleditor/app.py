@@ -410,9 +410,9 @@ def add_asset():
 
     if (
         'surf_left' in asset_spec_map[asset_name]
-        and REFS.left_or_right == 'left'
+        and REFS.left_or_right == 'right'
     ):
-        data['facing_right'] = False
+        data['facing_right'] = True
 
     obj_list.append(data)
 
@@ -609,7 +609,7 @@ class Object2D:
                 asset_spec_map[name]['surf_left']
                 if (
                     'surf_left' in asset_spec_map[name]
-                    and REFS.left_or_right == 'left'
+                    and not data.get('facing_right', False)
                 )
 
                 else asset_spec_map[name]['surf']
