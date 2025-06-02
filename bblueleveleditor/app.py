@@ -735,14 +735,17 @@ def update_asset_refs():
     if is_seamless:
         REFS.asset_surf = asset_spec_map[asset_name]['surf']
 
-    elif 'surf_left' in asset_spec_map[asset_name]:
+    else:
 
         REFS.asset_surf = (
 
-            asset_spec_map[asset_name]['surf']
-            if REFS.left_or_right == 'right'
+            asset_spec_map[asset_name]['surf_left']
+            if (
+                'surf_left' in asset_spec_map[asset_name]
+                and REFS.left_or_right == 'left'
+            )
 
-            else asset_spec_map[asset_name]['surf_left']
+            else asset_spec_map[asset_name]['surf']
 
         )
 
