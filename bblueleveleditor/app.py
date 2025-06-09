@@ -1315,9 +1315,9 @@ def save_level_as_png(must_outline_chunks):
 
     blit_on_surf = s.blit
 
-    for chunk in CHUNKS:
+    for layer_name in LAYER_NAMES:
 
-        for layer_name in LAYER_NAMES:
+        for chunk in CHUNKS:
 
             for obj in getattr(chunk, layer_name):
 
