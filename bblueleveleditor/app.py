@@ -16,6 +16,8 @@ from math import dist
 
 from warnings import warn
 
+from string import ascii_uppercase, digits
+
 
 ### third-party imports
 
@@ -82,7 +84,7 @@ from .pygameconstants import (
 
 from .grid import ScrollableGrid
 
-from .rendertext import render_text
+from .rendertext import render_text, render_big_text
 
 from .labelassist import get_rect_pos_name, get_label_text
 
@@ -1110,8 +1112,8 @@ def control():
 
             elif event.key == K_p:
 
-                must_outline_chunks = event.mod & KMOD_SHIFT
-                save_level_as_png(must_outline_chunks)
+                mark_areas = event.mod & KMOD_SHIFT
+                save_level_as_png(mark_areas)
 
             elif event.key == K_f:
                 add_label()
@@ -1286,7 +1288,7 @@ def outline_draw_objects():
 
 REFS.draw_objects = normal_draw_objects
 
-def save_level_as_png(must_outline_chunks):
+def save_level_as_png(mark_areas):
 
     ### position objs relative to their chunks
 
@@ -1323,9 +1325,11 @@ def save_level_as_png(must_outline_chunks):
 
                 blit_on_surf(obj.image, obj.rect.move(offset_x, offset_y))
 
-    ### if we must outline the chunks, draw their outlines too
+    ### if we must mark area, draw outline of chunks and screens
 
-    if must_outline_chunks:
+    if mark_areas:
+
+        ###
 
         for chunk in CHUNKS:
 
@@ -1335,6 +1339,65 @@ def save_level_as_png(must_outline_chunks):
                 chunk.rect.move(offset_x, offset_y),
                 1,
             )
+        
+        ###
+
+        screen_width, screen_height = SCREEN_RECT.size
+
+        col = 'A'
+        row = '0'
+
+        new_surf = Surface(tuple(dimension + 45 for dimension in union.size)).convert()
+        new_surf.fill('black')
+        new_surf.blit(s, (45, 45))
+
+        new_surf_width, new_surf_height = new_surf.get_size()
+
+        x = 58
+
+        s = new_surf
+
+        while x < new_surf_width:
+
+            col_surf = render_big_text(col, False, 'white', 'black')
+            new_surf.blit(col_surf, (x, 8))
+
+            x += screen_width
+            col = get_next_col(col)
 
     ### save layer on disk as image
     save_image(s, str(LEVELS_DIR / 'level.png'))
+
+def get_next_col(col):
+
+    letters = list(col)
+    letters.reverse()
+
+    increase = 1
+
+    new_col = ''
+
+    for letter in letters:
+
+        if increase:
+
+            if letter != 'Z':
+
+                increase = 0
+                index = ascii_uppercase.index(letter)
+                new_letter = ascii_uppercase[index + 1]
+                new_col += new_letter
+
+            else:
+                new_col += 'A'
+
+        else:
+            new_col += letter
+
+    if increase:
+        new_col += 'A'
+
+    new_col = list(new_col)
+    new_col.reverse()
+
+    return ''.join(new_col)
