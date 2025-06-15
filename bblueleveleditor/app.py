@@ -54,7 +54,11 @@ from pygame.math import Vector2
 
 from pygame.mouse import get_pos as get_mouse_pos
 
-from pygame.draw import rect as draw_rect, circle as draw_circle
+from pygame.draw import (
+    rect as draw_rect,
+    circle as draw_circle,
+    line as draw_line,
+)
 
 from pygame.image import load as load_image, save as save_image
 
@@ -82,7 +86,7 @@ from .pygameconstants import (
 
 from .grid import ScrollableGrid
 
-from .rendertext import render_text
+from .rendertext import render_text, render_big_text
 
 from .labelassist import get_rect_pos_name, get_label_text
 
@@ -1110,8 +1114,8 @@ def control():
 
             elif event.key == K_p:
 
-                must_outline_chunks = event.mod & KMOD_SHIFT
-                save_level_as_png(must_outline_chunks)
+                mark_areas = event.mod & KMOD_SHIFT
+                save_level_as_png(mark_areas)
 
             elif event.key == K_f:
                 add_label()
@@ -1286,7 +1290,7 @@ def outline_draw_objects():
 
 REFS.draw_objects = normal_draw_objects
 
-def save_level_as_png(must_outline_chunks):
+def save_level_as_png(mark_areas):
 
     ### position objs relative to their chunks
 
@@ -1323,18 +1327,126 @@ def save_level_as_png(must_outline_chunks):
 
                 blit_on_surf(obj.image, obj.rect.move(offset_x, offset_y))
 
-    ### if we must outline the chunks, draw their outlines too
+    ### if we must mark area, draw outline of chunks and screens
 
-    if must_outline_chunks:
+    if mark_areas:
+
+        screen_width, screen_height = SCREEN_RECT.size
+
+        ###
 
         for chunk in CHUNKS:
+
+            offset_chunk_rect = chunk.rect.move(offset_x, offset_y)
 
             draw_rect(
                 s,
                 'purple',
-                chunk.rect.move(offset_x, offset_y),
+                offset_chunk_rect,
                 1,
             )
+
+            h1 = Vector2(offset_chunk_rect.topleft)
+            h2 = Vector2(offset_chunk_rect.bottomleft)
+
+            for i in range(1, 3):
+
+                draw_line(
+                    s,
+                    'white',
+                    h1 + (screen_width * i, 0),
+                    h2 + (screen_width * i, 0),
+                    1,
+                )
+
+            v1 = Vector2(offset_chunk_rect.topleft)
+            v2 = Vector2(offset_chunk_rect.topright)
+
+            for i in range(1, 3):
+
+                draw_line(
+                    s,
+                    'white',
+                    v1 + (0, screen_height * i),
+                    v2 + (0, screen_height * i),
+                    1,
+                )
+        
+        ###
+        level_width, level_height = union.size
+
+        number_of_horiz_sections, remainder = divmod(level_width, screen_width)
+
+        if remainder:
+            number_of_horiz_sections += 1
+
+        max_horiz_digits = len(str(number_of_horiz_sections))
+
+        single_digit = render_big_text('0', False, 'white', 'black')
+
+        padding = 10
+
+        left_increment = single_digit.get_width() * max_horiz_digits + (padding * 2)
+        top_increment = single_digit.get_height() + (padding * 2)
+        increments = (left_increment, top_increment)
+
+        new_surf = Surface(
+            tuple(
+                dimension + increment
+                for dimension, increment in zip(union.size, increments)
+            )
+        ).convert()
+
+        new_surf.fill('black')
+        new_surf.blit(s, increments)
+
+        new_surf_width, new_surf_height = new_surf.get_size()
+
+        x = left_increment + padding
+        y = padding
+        section_index = 0
+
+        while True:
+
+            digits_surf = (
+                render_big_text(
+                    str(section_index).rjust(max_horiz_digits, '0'),
+                    False,
+                    'white',
+                    'black',
+                )
+            )
+
+            new_surf.blit(digits_surf, (x, y))
+            x += screen_width
+            section_index += 1
+
+            if x > new_surf_width:
+                break
+
+        x = padding
+        y = top_increment + padding
+        section_index = 0
+
+        while True:
+
+            digits_surf = (
+                render_big_text(
+                    str(section_index).rjust(max_horiz_digits, '0'),
+                    False,
+                    'white',
+                    'black',
+                )
+            )
+
+            new_surf.blit(digits_surf, (x, y))
+            y += screen_height
+            section_index += 1
+
+            if y > new_surf_height:
+                break
+
+        s = new_surf
 
     ### save layer on disk as image
     save_image(s, str(LEVELS_DIR / 'level.png'))
