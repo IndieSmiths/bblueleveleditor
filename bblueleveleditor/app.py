@@ -48,7 +48,10 @@ from pygame.event import get as get_events
 
 from pygame.display import update
 
-from pygame.key import get_pressed as get_pressed_states
+from pygame.key import (
+    get_pressed as get_pressed_states,
+    get_mods as get_modifiers_bitmask,
+)
 
 from pygame.math import Vector2
 
@@ -1143,7 +1146,14 @@ def control():
 
     ]
 
+    shift_pressed = KMOD_SHIFT & get_modifiers_bitmask()
+
     if dx or dy:
+
+        if shift_pressed:
+            dx *= 5
+            dy *= 5
+
         scroll(dx, dy)
 
 def update_app():
