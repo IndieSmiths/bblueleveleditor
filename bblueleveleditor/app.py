@@ -440,6 +440,10 @@ def add_asset():
 
     rect = obj.rect
 
+    # XXX should probably not iterate over chunks
+    # in CHUNKS, because if a chunks is to collide, than
+    # it will likely be in vicinity anyway (in CHUNKS_IN);
+
     for chunk in chain(CHUNKS_IN, CHUNKS):
 
         if chunk.rect.colliderect(rect):
