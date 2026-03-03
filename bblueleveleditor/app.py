@@ -158,6 +158,7 @@ LAYER_NAMES = (
     'blocks',
     'actors',
     'labels',
+    'frontprops',
 )
 
 
